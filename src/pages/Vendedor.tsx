@@ -17,6 +17,8 @@ export function Vendedor() {
   const [itens, setItens] = useState<ItemLocal[]>([])
   const [enviando, setEnviando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
+  const [meusPedidos, setMeusPedidos] = useState<any[]>([])
+  const [loadingPedidos, setLoadingPedidos] = useState(true)
   
   const codigoRef = useRef<HTMLInputElement>(null)
   const qtdRef = useRef<HTMLInputElement>(null)
@@ -24,7 +26,41 @@ export function Vendedor() {
   useEffect(() => {
     if (!user?.nome) navigate('/')
     codigoRef.current?.focus()
+    carregarMeusPedidos()
+
+    // Realtime subscription for MY orders
+    const channel = supabase
+      .channel(`meus-pedidos-${user.nome}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'pedidos',
+          filter: `vendedor_nome=eq.${user.nome}`
+        },
+        () => {
+          carregarMeusPedidos()
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
+
+  const carregarMeusPedidos = async () => {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('*')
+      .eq('vendedor_nome', user.nome)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (!error && data) {
+      setMeusPedidos(data)
+    }
+    setLoadingPedidos(false)
+  }
 
   const handleCodigoKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === 'Tab') {
@@ -186,7 +222,7 @@ export function Vendedor() {
 
         {/* Lista de Itens */}
         <div className="item-list-panel">
-          <div className="card">
+          <div className="card" style={{ marginBottom: '24px' }}>
             <h2>
               Lista do Pedido
               <span className="item-count-badge">{itens.length}</span>
@@ -226,6 +262,38 @@ export function Vendedor() {
                   ))}
                 </tbody>
               </table>
+            )}
+          </div>
+
+          <div className="card">
+            <h2>🚚 Acompanhamento de Pedidos</h2>
+            {loadingPedidos ? (
+              <div className="empty-state">
+                <div className="spinner" style={{ width: 24, height: 24 }} />
+                <p>Carregando seus pedidos...</p>
+              </div>
+            ) : meusPedidos.length === 0 ? (
+              <div className="empty-state">
+                <p>Você ainda não enviou nenhum pedido.</p>
+              </div>
+            ) : (
+              <div className="orders-mini-list">
+                {meusPedidos.map(p => (
+                  <div key={p.id} className="order-mini-card">
+                    <div className="order-mini-info">
+                      <span className="order-mini-time">{new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="order-mini-setor">{p.setor}</span>
+                    </div>
+                    <div className="order-mini-status">
+                      <span className={`status-badge status-${p.status}`}>
+                        {p.status === 'pendente' && <><span className="pulse-dot" /> Pendente</>}
+                        {p.status === 'em_andamento' && <><span className="pulse-dot blue" /> Em Andamento</>}
+                        {p.status === 'finalizado' && <>✅ Finalizado</>}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

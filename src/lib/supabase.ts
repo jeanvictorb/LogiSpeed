@@ -9,7 +9,7 @@ export type Pedido = {
   id: string
   vendedor_nome: string
   setor: string
-  status: 'pendente' | 'finalizado'
+  status: 'pendente' | 'em_andamento' | 'finalizado'
   operador_logistica: string | null
   created_at: string
   finalizado_at: string | null
