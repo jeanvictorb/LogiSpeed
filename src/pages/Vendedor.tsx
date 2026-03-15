@@ -19,6 +19,7 @@ export function Vendedor() {
   const [sucesso, setSucesso] = useState(false)
   const [meusPedidos, setMeusPedidos] = useState<any[]>([])
   const [loadingPedidos, setLoadingPedidos] = useState(true)
+  const [pedidoSelecionado, setPedidoSelecionado] = useState<any | null>(null)
   
   const codigoRef = useRef<HTMLInputElement>(null)
   const qtdRef = useRef<HTMLInputElement>(null)
@@ -28,33 +29,42 @@ export function Vendedor() {
     codigoRef.current?.focus()
     carregarMeusPedidos()
 
-    // Realtime subscription for MY orders
-    const channel = supabase
-      .channel(`meus-pedidos-${user.nome}`)
-      .on(
-        'postgres_changes',
-        { 
+    // Realtime subscription
+    let channelSubscription: any
+    
+    if (user.perfil === 'logistica') {
+      channelSubscription = supabase
+        .channel('all-pedidos')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => carregarMeusPedidos())
+    } else {
+      // Every other sector sees all orders from their own sector
+      channelSubscription = supabase
+        .channel(`${user.setor}-pedidos`)
+        .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
           table: 'pedidos',
-          filter: `vendedor_nome=eq.${user.nome}`
-        },
-        () => {
-          carregarMeusPedidos()
-        }
-      )
-      .subscribe()
+          filter: `setor=eq.${user.setor}`
+        }, () => carregarMeusPedidos())
+    }
 
-    return () => { supabase.removeChannel(channel) }
+    channelSubscription.subscribe()
+
+    return () => { supabase.removeChannel(channelSubscription) }
   }, [])
 
   const carregarMeusPedidos = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('pedidos')
-      .select('*')
-      .eq('vendedor_nome', user.nome)
+      .select('*, itens_pedido(*)')
       .order('created_at', { ascending: false })
       .limit(10)
+
+    if (user.perfil !== 'logistica') {
+      query = query.eq('setor', user.setor)
+    }
+
+    const { data, error } = await query
 
     if (!error && data) {
       setMeusPedidos(data)
@@ -279,7 +289,12 @@ export function Vendedor() {
             ) : (
               <div className="orders-mini-list">
                 {meusPedidos.map(p => (
-                  <div key={p.id} className="order-mini-card">
+                  <div 
+                    key={p.id} 
+                    className="order-mini-card"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setPedidoSelecionado(p)}
+                  >
                     <div className="order-mini-info">
                       <span className="order-mini-time">{new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                       <span className="order-mini-setor">{p.setor}</span>
@@ -298,6 +313,48 @@ export function Vendedor() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Detalhes (Vendedor) */}
+      {pedidoSelecionado && (
+        <div className="alert-overlay" onClick={e => e.target === e.currentTarget && setPedidoSelecionado(null)}>
+          <div className="alert-card">
+            <div className="alert-header">
+              <h2 className="alert-title">📋 Detalhes do Pedido</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setPedidoSelecionado(null)}>✕</button>
+            </div>
+
+            <div className="alert-meta">
+              <div className="meta-tag">🏷️ Setor: <strong>{pedidoSelecionado.setor}</strong></div>
+              <div className="meta-tag">👤 <strong>{pedidoSelecionado.vendedor_nome}</strong></div>
+              <div className="meta-tag">🕐 <strong>{new Date(pedidoSelecionado.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</strong></div>
+            </div>
+
+            <div className="alert-items">
+              <div className="alert-items-header">
+                <span>Código do Produto</span>
+                <span>Qtd.</span>
+              </div>
+              {pedidoSelecionado.itens_pedido?.map((item: any) => (
+                <div key={item.id} className="alert-item-row">
+                  <span className="alert-item-code">{item.codigo_produto}</span>
+                  <span className="alert-item-qty">{item.quantidade}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+              <div className={`status-badge status-${pedidoSelecionado.status}`} style={{ display: 'inline-flex', padding: '8px 16px', fontSize: '14px' }}>
+                {pedidoSelecionado.status === 'pendente' && 'Aguardando Logística'}
+                {pedidoSelecionado.status === 'em_andamento' && `Em Separação por ${pedidoSelecionado.operador_logistica || '...'}`}
+                {pedidoSelecionado.status === 'finalizado' && `Finalizado por ${pedidoSelecionado.operador_logistica}`}
+              </div>
+              <button className="btn btn-ghost btn-full" style={{ marginTop: '12px' }} onClick={() => setPedidoSelecionado(null)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {sucesso && (
         <div className="success-toast">

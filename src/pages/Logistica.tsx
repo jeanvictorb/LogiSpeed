@@ -170,9 +170,9 @@ export function Logistica() {
 
       if (error) throw error
 
-      setPedidos(prev => prev.map(p => 
-        p.id === pedidoSelecionado.id 
-          ? { ...p, status: 'em_andamento', operador_logistica: operadorNome.trim() } 
+      setPedidos(prev => prev.map(p =>
+        p.id === pedidoSelecionado.id
+          ? { ...p, status: 'em_andamento', operador_logistica: operadorNome.trim() }
           : p
       ))
       setPedidoSelecionado(prev => prev ? { ...prev, status: 'em_andamento', operador_logistica: operadorNome.trim() } : null)
@@ -218,8 +218,33 @@ export function Logistica() {
   }
 
   const sair = () => {
-    localStorage.removeItem('logispeed_user')
     navigate('/')
+  }
+
+  const exportarExcel = () => {
+    const dataToExport = view === 'pendentes' ? pedidos : logPedidos
+    if (dataToExport.length === 0) return
+
+    const rows = dataToExport.flatMap(p => 
+      p.itens_pedido.map(item => ({
+        'ID Pedido': p.id.slice(0, 8),
+        'Setor': p.setor,
+        'Vendedor': p.vendedor_nome,
+        'Data': new Date(p.created_at).toLocaleDateString('pt-BR'),
+        'Hora': formatTime(p.created_at),
+        'Status': p.status,
+        'Operador Logística': p.operador_logistica || '-',
+        'Produto/Código': item.codigo_produto,
+        'Quantidade': item.quantidade
+      }))
+    )
+
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedidos')
+    
+    const fileName = `LogiSpeed_${view}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    XLSX.writeFile(workbook, fileName)
   }
 
   return (
@@ -249,20 +274,20 @@ export function Logistica() {
               )}
             </h1>
             <p className="page-subtitle">
-              {view === 'pendentes' 
-                ? 'Monitorando novos pedidos em tempo real. Clique em um card para ver os detalhes.' 
+              {view === 'pendentes'
+                ? 'Monitorando novos pedidos em tempo real. Clique em um card para ver os detalhes.'
                 : 'Histórico de pedidos atendidos e finalizados.'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <div className="tab-group">
-              <button 
+              <button
                 className={`btn btn-sm ${view === 'pendentes' ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => setView('pendentes')}
               >
                 📥 Pendentes
               </button>
-              <button 
+              <button
                 className={`btn btn-sm ${view === 'log' ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => { setView('log'); carregarLog() }}
               >
@@ -271,6 +296,14 @@ export function Logistica() {
             </div>
             <button className="btn btn-ghost" onClick={view === 'pendentes' ? carregarPedidos : carregarLog} title="Atualizar">
               🔄
+            </button>
+            <button 
+              className="btn btn-success btn-sm" 
+              onClick={exportarExcel} 
+              disabled={(view === 'pendentes' ? pedidos : logPedidos).length === 0}
+              title="Exportar para Excel"
+            >
+              📊 Exportar
             </button>
           </div>
         </div>
@@ -340,7 +373,11 @@ export function Logistica() {
                   <div
                     key={pedido.id}
                     className="order-card"
-                    style={{ cursor: 'default' }}
+                    onClick={() => {
+                      setPedidoSelecionado(pedido)
+                      setOperadorNome(pedido.operador_logistica || '')
+                      setErrFinalize('')
+                    }}
                   >
                     <div className="order-card-header">
                       <span className="order-setor">{pedido.setor}</span>
@@ -420,7 +457,7 @@ export function Logistica() {
                   >
                     🚀 Iniciar Atendimento
                   </button>
-                ) : (
+                ) : pedidoSelecionado.status === 'em_andamento' ? (
                   <div style={{ width: '100%', display: 'flex', gap: '10px' }}>
                     <button className="btn btn-ghost" onClick={() => setPedidoSelecionado(null)}>
                       Fechar
@@ -434,6 +471,10 @@ export function Logistica() {
                       {finalizando ? <><div className="spinner" /> Finalizando...</> : '✅ Finalizar Pedido'}
                     </button>
                   </div>
+                ) : (
+                  <button className="btn btn-ghost btn-full" onClick={() => setPedidoSelecionado(null)}>
+                    Fechar Visualização
+                  </button>
                 )}
               </div>
             </div>
