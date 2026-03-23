@@ -605,6 +605,24 @@ html, body, #root {
   gap: 6px;
 }
 
+.btn-export-small {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green-light);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+}
+
+.btn-export-small:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--accent-green);
+}
+
 /* Alert Overlay */
 .alert-overlay {
   position: fixed;

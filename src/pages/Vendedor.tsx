@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
 
 type ItemLocal = {
@@ -153,6 +154,27 @@ export function Vendedor() {
     navigate('/')
   }
 
+  const exportarPedidoExcel = (pedido: any) => {
+    const rows = pedido.itens_pedido.map((item: any) => ({
+      'ID Pedido': pedido.id.slice(0, 8),
+      'Setor': pedido.setor,
+      'Vendedor': pedido.vendedor_nome,
+      'Data': new Date(pedido.created_at).toLocaleDateString('pt-BR'),
+      'Hora': new Date(pedido.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      'Status': pedido.status,
+      'Operador Logística': pedido.operador_logistica || '-',
+      'Produto/Código': item.codigo_produto,
+      'Quantidade': item.quantidade
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedido')
+    
+    const fileName = `Pedido_${pedido.setor}_${pedido.id.slice(0, 8)}.xlsx`
+    XLSX.writeFile(workbook, fileName)
+  }
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -296,7 +318,16 @@ export function Vendedor() {
                     onClick={() => setPedidoSelecionado(p)}
                   >
                     <div className="order-mini-info">
-                      <span className="order-mini-time">{new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="order-mini-time">{new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <button 
+                          className="btn-export-small" 
+                          onClick={(e) => { e.stopPropagation(); exportarPedidoExcel(p) }}
+                          title="Exportar este pedido para Excel"
+                        >
+                          🟢 Excel
+                        </button>
+                      </div>
                       <span className="order-mini-setor">{p.setor}</span>
                     </div>
                     <div className="order-mini-status">
@@ -319,7 +350,16 @@ export function Vendedor() {
         <div className="alert-overlay" onClick={e => e.target === e.currentTarget && setPedidoSelecionado(null)}>
           <div className="alert-card">
             <div className="alert-header">
-              <h2 className="alert-title">📋 Detalhes do Pedido</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h2 className="alert-title">📋 Detalhes do Pedido</h2>
+                <button 
+                  className="btn btn-success btn-sm" 
+                  onClick={() => exportarPedidoExcel(pedidoSelecionado)}
+                  title="Exportar para Excel"
+                >
+                  🟢 Exportar Excel
+                </button>
+              </div>
               <button className="btn btn-ghost btn-sm" onClick={() => setPedidoSelecionado(null)}>✕</button>
             </div>
 

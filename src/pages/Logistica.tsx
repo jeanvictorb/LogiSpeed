@@ -221,7 +221,28 @@ export function Logistica() {
     navigate('/')
   }
 
-  const exportarExcel = () => {
+  const exportarPedidoExcel = (pedido: PedidoComItens) => {
+    const rows = pedido.itens_pedido.map(item => ({
+      'ID Pedido': pedido.id.slice(0, 8),
+      'Setor': pedido.setor,
+      'Vendedor': pedido.vendedor_nome,
+      'Data': new Date(pedido.created_at).toLocaleDateString('pt-BR'),
+      'Hora': formatTime(pedido.created_at),
+      'Status': pedido.status,
+      'Operador Logística': pedido.operador_logistica || '-',
+      'Produto/Código': item.codigo_produto,
+      'Quantidade': item.quantidade
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedido')
+    
+    const fileName = `Pedido_${pedido.setor}_${pedido.id.slice(0, 8)}.xlsx`
+    XLSX.writeFile(workbook, fileName)
+  }
+
+  const exportarExcelCompleto = () => {
     const dataToExport = view === 'pendentes' ? pedidos : logPedidos
     if (dataToExport.length === 0) return
 
@@ -299,11 +320,11 @@ export function Logistica() {
             </button>
             <button 
               className="btn btn-success btn-sm" 
-              onClick={exportarExcel} 
+              onClick={exportarExcelCompleto} 
               disabled={(view === 'pendentes' ? pedidos : logPedidos).length === 0}
-              title="Exportar para Excel"
+              title="Exportar Tudo para Excel"
             >
-              📊 Exportar
+              📊 Exportar Tudo
             </button>
           </div>
         </div>
@@ -330,7 +351,16 @@ export function Logistica() {
                     onClick={() => { setPedidoSelecionado(pedido); setOperadorNome(pedido.operador_logistica || ''); setErrFinalize('') }}
                   >
                     <div className="order-card-header">
-                      <span className="order-setor">{pedido.setor}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="order-setor">{pedido.setor}</span>
+                        <button 
+                          className="btn-export-small" 
+                          onClick={(e) => { e.stopPropagation(); exportarPedidoExcel(pedido) }}
+                          title="Exportar este pedido para Excel"
+                        >
+                          🟢 Excel
+                        </button>
+                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <span className="order-time">{formatTime(pedido.created_at)}</span>
                         <span className={`status-badge status-${pedido.status}`}>
@@ -380,7 +410,16 @@ export function Logistica() {
                     }}
                   >
                     <div className="order-card-header">
-                      <span className="order-setor">{pedido.setor}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="order-setor">{pedido.setor}</span>
+                        <button 
+                          className="btn-export-small" 
+                          onClick={(e) => { e.stopPropagation(); exportarPedidoExcel(pedido) }}
+                          title="Exportar este pedido para Excel"
+                        >
+                          🟢 Excel
+                        </button>
+                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <span className="order-time">{formatTime(pedido.created_at)}</span>
                         <span className={`status-badge status-${pedido.status}`}>
