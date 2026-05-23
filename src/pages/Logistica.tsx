@@ -72,7 +72,7 @@ function playPriceAlert(vendedor: string) {
   }
 }
 
-// Alert sound for pending orders loop (every 10 minutes)
+// Alert sound for pending orders loop (every 2 minutes)
 function playPendingOrdersAlert(count: number) {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -156,7 +156,7 @@ export function Logistica() {
       if (pendingCount > 0) {
         playPendingOrdersAlert(pendingCount)
       }
-    }, 10 * 60 * 1000) // 10 minutes
+    }, 2 * 60 * 1000) // 2 minutes
 
     return () => clearInterval(intervalId)
   }, [])
@@ -221,7 +221,7 @@ export function Logistica() {
             }
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as Pedido
-            
+
             // If it was cancelled or finalized, remove from main list if it's there
             if (updated.status === 'cancelado' || updated.status === 'finalizado') {
               setPedidos(prev => prev.filter(p => p.id !== updated.id))
@@ -236,7 +236,7 @@ export function Logistica() {
                   return next
                 } else {
                   // Need to fetch full data because update payload might not have items
-                  carregarPedidos() 
+                  carregarPedidos()
                   return prev
                 }
               })
@@ -435,7 +435,7 @@ export function Logistica() {
     const worksheet = XLSX.utils.json_to_sheet(rows)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedido')
-    
+
     const fileName = `Pedido_${pedido.setor}_${pedido.id.slice(0, 8)}.xlsx`
     XLSX.writeFile(workbook, fileName)
   }
@@ -465,7 +465,7 @@ export function Logistica() {
     const dataToExport = view === 'pendentes' ? pedidos : logPedidos
     if (dataToExport.length === 0) return
 
-    const rows = dataToExport.flatMap(p => 
+    const rows = dataToExport.flatMap(p =>
       p.itens_pedido.map(item => ({
         'ID Pedido': p.id.slice(0, 8),
         'Setor': p.setor,
@@ -482,7 +482,7 @@ export function Logistica() {
     const worksheet = XLSX.utils.json_to_sheet(rows)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedidos')
-    
+
     const fileName = `LogiSpeed_${view}_${new Date().toISOString().slice(0, 10)}.xlsx`
     XLSX.writeFile(workbook, fileName)
   }
@@ -553,9 +553,9 @@ export function Logistica() {
             <button className="btn btn-ghost" onClick={view === 'pendentes' ? carregarPedidos : view === 'precos' ? carregarSolicitacoes : carregarLog} title="Atualizar">
               🔄
             </button>
-            <button 
-              className="btn btn-success btn-sm" 
-              onClick={exportarExcelCompleto} 
+            <button
+              className="btn btn-success btn-sm"
+              onClick={exportarExcelCompleto}
               disabled={(view === 'pendentes' ? pedidos : view === 'precos' ? solicitacoes : logPedidos).length === 0}
               title="Exportar Tudo para Excel"
             >
@@ -588,8 +588,8 @@ export function Logistica() {
                     <div className="order-card-header">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="order-setor">{pedido.setor}</span>
-                        <button 
-                          className="btn-export-small" 
+                        <button
+                          className="btn-export-small"
                           onClick={(e) => { e.stopPropagation(); exportarPedidoExcel(pedido) }}
                           title="Exportar este pedido para Excel"
                         >
@@ -694,8 +694,8 @@ export function Logistica() {
                     <div className="order-card-header">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="order-setor">{pedido.setor}</span>
-                        <button 
-                          className="btn-export-small" 
+                        <button
+                          className="btn-export-small"
                           onClick={(e) => { e.stopPropagation(); exportarPedidoExcel(pedido) }}
                           title="Exportar este pedido para Excel"
                         >
