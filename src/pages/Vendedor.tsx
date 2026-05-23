@@ -21,6 +21,7 @@ export function Vendedor() {
   const [meusPedidos, setMeusPedidos] = useState<any[]>([])
   const [loadingPedidos, setLoadingPedidos] = useState(true)
   const [pedidoSelecionado, setPedidoSelecionado] = useState<any | null>(null)
+  const [editandoPedidoId, setEditandoPedidoId] = useState<string | null>(null)
   
   const codigoRef = useRef<HTMLInputElement>(null)
   const qtdRef = useRef<HTMLInputElement>(null)
@@ -114,29 +115,64 @@ export function Vendedor() {
     setEnviando(true)
 
     try {
-      const { data: pedido, error: pedidoError } = await supabase
-        .from('pedidos')
-        .insert({
-          vendedor_nome: user.nome,
-          setor: user.setor,
-          status: 'pendente',
-        })
-        .select()
-        .single()
+      if (editandoPedidoId) {
+        // Update existing order
+        const { error: pedidoError } = await supabase
+          .from('pedidos')
+          .update({
+            status: 'pendente', // Reset status to pending if it was something else (though we only allow editing pending)
+          })
+          .eq('id', editandoPedidoId)
 
-      if (pedidoError) throw pedidoError
+        if (pedidoError) throw pedidoError
 
-      const itensSave = itens.map(item => ({
-        pedido_id: pedido.id,
-        codigo_produto: item.codigo_produto,
-        quantidade: item.quantidade,
-      }))
+        // Delete old items and insert new ones
+        const { error: deleteError } = await supabase
+          .from('itens_pedido')
+          .delete()
+          .eq('pedido_id', editandoPedidoId)
 
-      const { error: itensError } = await supabase
-        .from('itens_pedido')
-        .insert(itensSave)
+        if (deleteError) throw deleteError
 
-      if (itensError) throw itensError
+        const itensSave = itens.map(item => ({
+          pedido_id: editandoPedidoId,
+          codigo_produto: item.codigo_produto,
+          quantidade: item.quantidade,
+        }))
+
+        const { error: itensError } = await supabase
+          .from('itens_pedido')
+          .insert(itensSave)
+
+        if (itensError) throw itensError
+
+        setEditandoPedidoId(null)
+      } else {
+        // Create new order
+        const { data: pedido, error: pedidoError } = await supabase
+          .from('pedidos')
+          .insert({
+            vendedor_nome: user.nome,
+            setor: user.setor,
+            status: 'pendente',
+          })
+          .select()
+          .single()
+
+        if (pedidoError) throw pedidoError
+
+        const itensSave = itens.map(item => ({
+          pedido_id: pedido.id,
+          codigo_produto: item.codigo_produto,
+          quantidade: item.quantidade,
+        }))
+
+        const { error: itensError } = await supabase
+          .from('itens_pedido')
+          .insert(itensSave)
+
+        if (itensError) throw itensError
+      }
 
       setItens([])
       setSucesso(true)
@@ -147,6 +183,35 @@ export function Vendedor() {
     } finally {
       setEnviando(false)
     }
+  }
+
+  const cancelarPedido = async (id: string) => {
+    if (!confirm('Tem certeza que deseja cancelar este pedido?')) return
+
+    try {
+      const { error } = await supabase
+        .from('pedidos')
+        .update({ status: 'cancelado' })
+        .eq('id', id)
+
+      if (error) throw error
+      setPedidoSelecionado(null)
+      carregarMeusPedidos()
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao cancelar pedido.')
+    }
+  }
+
+  const iniciarEdicao = (pedido: any) => {
+    setItens(pedido.itens_pedido.map((item: any) => ({
+      id: item.id,
+      codigo_produto: item.codigo_produto,
+      quantidade: item.quantidade
+    })))
+    setEditandoPedidoId(pedido.id)
+    setPedidoSelecionado(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const sair = () => {
@@ -237,15 +302,27 @@ export function Vendedor() {
             </p>
 
             <div className="send-section">
+              {editandoPedidoId && (
+                <div style={{ marginBottom: '12px', padding: '8px', background: 'rgba(255, 193, 7, 0.1)', border: '1px solid #ffc107', borderRadius: '4px', fontSize: '13px' }}>
+                  ⚠️ Editando pedido <strong>#{editandoPedidoId.slice(0, 8)}</strong>
+                  <button 
+                    className="btn btn-ghost btn-sm" 
+                    style={{ marginLeft: '8px', color: 'var(--accent-red)' }}
+                    onClick={() => { setEditandoPedidoId(null); setItens([]) }}
+                  >
+                    Cancelar Edição
+                  </button>
+                </div>
+              )}
               <button
-                className="btn btn-success btn-lg btn-full"
+                className={`btn ${editandoPedidoId ? 'btn-primary' : 'btn-success'} btn-lg btn-full`}
                 onClick={enviarPedido}
                 disabled={itens.length === 0 || enviando}
               >
                 {enviando ? (
-                  <><div className="spinner" /> Enviando...</>
+                  <><div className="spinner" /> {editandoPedidoId ? 'Salvando...' : 'Enviando...'}</>
                 ) : (
-                  <>✅ Enviar Pedido ({itens.length} {itens.length === 1 ? 'item' : 'itens'})</>
+                  <>✅ {editandoPedidoId ? 'Salvar Alterações' : `Enviar Pedido (${itens.length} ${itens.length === 1 ? 'item' : 'itens'})`}</>
                 )}
               </button>
             </div>
@@ -335,6 +412,7 @@ export function Vendedor() {
                         {p.status === 'pendente' && <><span className="pulse-dot" /> Pendente</>}
                         {p.status === 'em_andamento' && <><span className="pulse-dot blue" /> Em Andamento</>}
                         {p.status === 'finalizado' && <>✅ Finalizado</>}
+                        {p.status === 'cancelado' && <>❌ Cancelado</>}
                       </span>
                     </div>
                   </div>
@@ -387,7 +465,28 @@ export function Vendedor() {
                 {pedidoSelecionado.status === 'pendente' && 'Aguardando Logística'}
                 {pedidoSelecionado.status === 'em_andamento' && `Em Separação por ${pedidoSelecionado.operador_logistica || '...'}`}
                 {pedidoSelecionado.status === 'finalizado' && `Finalizado por ${pedidoSelecionado.operador_logistica}`}
+                {pedidoSelecionado.status === 'cancelado' && 'Cancelado'}
               </div>
+
+              {pedidoSelecionado.status === 'pendente' && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ flex: 1 }}
+                    onClick={() => iniciarEdicao(pedidoSelecionado)}
+                  >
+                    ✏️ Editar
+                  </button>
+                  <button 
+                    className="btn btn-danger" 
+                    style={{ flex: 1 }}
+                    onClick={() => cancelarPedido(pedidoSelecionado.id)}
+                  >
+                    🗑️ Cancelar
+                  </button>
+                </div>
+              )}
+
               <button className="btn btn-ghost btn-full" style={{ marginTop: '12px' }} onClick={() => setPedidoSelecionado(null)}>
                 Fechar
               </button>

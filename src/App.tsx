@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Login } from './pages/Login'
 import { Vendedor } from './pages/Vendedor'
 import { Logistica } from './pages/Logistica'
+import { Comercial } from './pages/Comercial'
 
 function PrivateRoute({ children, perfil }: { children: React.ReactNode; perfil: string }) {
   const user = JSON.parse(localStorage.getItem('logispeed_user') || '{}')
@@ -29,6 +30,14 @@ function App() {
           element={
             <PrivateRoute perfil="logistica">
               <Logistica />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/comercial"
+          element={
+            <PrivateRoute perfil="comercial">
+              <Comercial />
             </PrivateRoute>
           }
         />

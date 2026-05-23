@@ -13,7 +13,7 @@ const SETORES = [
 
 export function Login() {
   const navigate = useNavigate()
-  const [perfil, setPerfil] = useState<'vendedor' | 'logistica' | null>(null)
+  const [perfil, setPerfil] = useState<'vendedor' | 'logistica' | 'comercial' | null>(null)
   const [setor, setSetor] = useState('')
   const [nome, setNome] = useState('')
   const [error, setError] = useState('')
@@ -22,6 +22,7 @@ export function Login() {
     if (!perfil) { setError('Selecione um perfil.'); return }
     if (!nome.trim()) { setError('Digite seu nome.'); return }
     if (perfil === 'vendedor' && !setor) { setError('Selecione o setor.'); return }
+    if (perfil === 'comercial' && !setor) { setError('Selecione o setor.'); return }
 
     const userData = {
       perfil,
@@ -29,7 +30,9 @@ export function Login() {
       setor: perfil === 'logistica' ? 'Logística' : setor,
     }
     localStorage.setItem('logispeed_user', JSON.stringify(userData))
-    navigate(perfil === 'logistica' ? '/logistica' : '/vendedor')
+    if (perfil === 'logistica') navigate('/logistica')
+    else if (perfil === 'comercial') navigate('/comercial')
+    else navigate('/vendedor')
   }
 
   return (
@@ -51,6 +54,14 @@ export function Login() {
             <div className="profile-desc">Lançar pedidos</div>
           </div>
           <div
+            className={`profile-option ${perfil === 'comercial' ? 'selected' : ''}`}
+            onClick={() => { setPerfil('comercial'); setSetor('') }}
+          >
+            <div className="profile-icon">💼</div>
+            <div className="profile-name">Comercial</div>
+            <div className="profile-desc">Trocar preços</div>
+          </div>
+          <div
             className={`profile-option ${perfil === 'logistica' ? 'selected' : ''}`}
             onClick={() => setPerfil('logistica')}
           >
@@ -63,7 +74,7 @@ export function Login() {
         <div className="divider" />
 
         {/* Fields */}
-        {perfil === 'vendedor' && (
+        {(perfil === 'vendedor' || perfil === 'comercial') && (
           <div className="form-group">
             <label className="form-label">Setor</label>
             <select

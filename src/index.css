@@ -830,6 +830,44 @@ html, body, #root {
   border: 1px solid rgba(16,185,129,0.3);
 }
 
+.status-pendente {
+  background: rgba(245,158,11,0.1);
+  color: var(--accent-orange);
+  border: 1px solid rgba(245,158,11,0.2);
+}
+
+.status-cancelado {
+  background: rgba(239,68,68,0.1);
+  color: var(--accent-red);
+  border: 1px solid rgba(239,68,68,0.2);
+}
+
+.tab-group {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  gap: 4px;
+}
+
+.tab-group .btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  border: none;
+}
+
+.tab-group .btn-primary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-group .btn-ghost {
+  border: none;
+  background: transparent;
+}
+
 /* Seller tracking list */
 .orders-mini-list {
   display: flex;

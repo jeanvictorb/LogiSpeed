@@ -9,10 +9,23 @@ export type Pedido = {
   id: string
   vendedor_nome: string
   setor: string
-  status: 'pendente' | 'em_andamento' | 'finalizado'
+  status: 'pendente' | 'em_andamento' | 'finalizado' | 'cancelado'
   operador_logistica: string | null
   created_at: string
   finalizado_at: string | null
+}
+
+export type SolicitacaoPreco = {
+  id: string
+  vendedor_nome: string
+  setor: string
+  codigos_produto: string[]
+  motivo: string | null
+  status: 'pendente' | 'aprovado' | 'recusado'
+  operador_logistica: string | null
+  nota_resposta: string | null
+  created_at: string
+  respondido_at: string | null
 }
 
 export type ItemPedido = {
